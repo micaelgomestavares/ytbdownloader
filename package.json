@@ -1,0 +1,178 @@
+{
+  "name": "youtube-to-mp3-converter",
+  "version": "1.0.0",
+  "description": "Um conversor moderno de vídeos do YouTube para MP3 usando Electron, React e TypeScript",
+  "main": "electron/main.js",
+  "homepage": "./",
+  "scripts": {
+    "build:react": "webpack --mode production --config webpack.config.js",
+    "build:installer": "node scripts/build-installer.js",
+    "build:portable": "node scripts/build-portable.js",
+    "download-binaries": "node scripts/download-binaries.js",
+    "start": "electron .",
+    "clean": "node scripts/clean.js",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "keywords": [
+    "youtube",
+    "mp3",
+    "converter",
+    "electron",
+    "react",
+    "typescript",
+    "music"
+  ],
+  "author": "Seu Nome <seu.email@example.com>",
+  "license": "MIT",
+  "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.14",
+    "@radix-ui/react-dropdown-menu": "^2.1.15",
+    "@radix-ui/react-progress": "^1.1.7",
+    "@radix-ui/react-select": "^2.2.5",
+    "@radix-ui/react-separator": "^1.1.7",
+    "@radix-ui/react-slot": "^1.2.3",
+    "@radix-ui/react-switch": "^1.2.5",
+    "@radix-ui/react-toast": "^1.2.14",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.519.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "tailwind-merge": "^3.3.1",
+    "tailwindcss-animate": "^1.0.7"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.27.4",
+    "@babel/preset-env": "^7.27.2",
+    "@babel/preset-react": "^7.27.1",
+    "@babel/preset-typescript": "^7.27.1",
+    "@types/node": "^24.0.3",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "autoprefixer": "^10.4.21",
+    "babel-loader": "^10.0.0",
+    "buffer": "^6.0.3",
+    "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3",
+    "crypto-browserify": "^3.12.1",
+    "css-loader": "^7.1.2",
+    "dotenv": "^16.5.0",
+    "electron": "^36.5.0",
+    "electron-builder": "^26.0.12",
+    "events": "^3.3.0",
+    "html-webpack-plugin": "^5.6.3",
+    "os-browserify": "^0.3.0",
+    "path-browserify": "^1.0.1",
+    "postcss": "^8.5.6",
+    "postcss-loader": "^8.1.1",
+    "process": "^0.11.10",
+    "stream-browserify": "^3.0.0",
+    "style-loader": "^4.0.0",
+    "tailwindcss": "^3.4.14",
+    "typescript": "^5.8.3",
+    "wait-on": "^8.0.3",
+    "webpack": "^5.99.9",
+    "webpack-cli": "^6.0.1",
+    "webpack-dev-server": "^5.2.2"
+  },
+  "build": {
+    "appId": "com.yourname.youtube-to-mp3-converter",
+    "productName": "YouTube to MP3 Converter",
+    "copyright": "Copyright © 2025 YouTube to MP3 Converter",
+    "icon": "assets/favicon.ico",
+    "directories": {
+      "output": "dist",
+      "buildResources": "assets"
+    },
+    "files": [
+      "electron/**/*",
+      "build/**/*",
+      "node_modules/**/*",
+      "package.json",
+      "!node_modules/**/test",
+      "!node_modules/**/tests",
+      "!node_modules/**/*.md",
+      "!node_modules/**/CHANGELOG.md",
+      "!node_modules/**/README.md"
+    ],
+    "extraResources": [
+      {
+        "from": "downloads",
+        "to": "downloads",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "binaries",
+        "to": "binaries",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "assets",
+        "to": "assets",
+        "filter": [
+          "*.ico",
+          "*.png"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/favicon.ico",
+      "requestedExecutionLevel": "asInvoker",
+      "forceCodeSigning": false,
+      "signAndEditExecutable": false,
+      "artifactName": "${productName}-Setup-${version}.${ext}",
+      "verifyUpdateCodeSignature": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "warningsAsErrors": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "allowElevation": true,
+      "runAfterFinish": true,
+      "menuCategory": "Audio & Video",
+      "shortcutName": "YouTube to MP3 Converter",
+      "uninstallDisplayName": "YouTube to MP3 Converter",
+      "installerIcon": "assets/favicon.ico",
+      "uninstallerIcon": "assets/favicon.ico",
+      "installerHeaderIcon": "assets/favicon.ico",
+      "deleteAppDataOnUninstall": false,
+      "differentialPackage": true,
+      "perMachine": false,
+      "artifactName": "${productName}-Setup-${version}.${ext}",
+      "include": "scripts/installer-minimal.nsh"
+    },
+    "portable": {
+      "artifactName": "${productName}-Portable-${version}.${ext}",
+      "requestExecutionLevel": "user"
+    },
+    "compression": "maximum",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "generateUpdatesFilesForAllChannels": false,
+    "detectUpdateChannel": true,
+    "publish": {
+      "provider": "github",
+      "owner": "your-github-username",
+      "repo": "youtube-to-mp3-converter"
+    }
+  }
+}
