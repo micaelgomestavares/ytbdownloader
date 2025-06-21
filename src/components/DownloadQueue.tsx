@@ -1,26 +1,27 @@
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Separator } from './ui/separator';
-import DownloadItem from './DownloadItem';
-import { 
-  Inbox, 
-  Trash2, 
-  Download, 
-  CheckCircle, 
-  AlertCircle, 
+/** biome-ignore-all lint/nursery/noNestedComponentDefinitions: <explanation> */
+import {
+  AlertCircle,
+  CheckCircle,
+  Download,
+  FolderOpen,
   Hourglass,
-  FolderOpen
-} from 'lucide-react';
+  Inbox,
+  Trash2,
+} from "lucide-react";
+import type React from "react";
+import DownloadItem from "./DownloadItem";
+import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Separator } from "./ui/separator";
 
-interface Download {
+interface IDownload {
   id: string;
   url: string;
   title: string;
   uploader?: string;
   duration?: string | number;
-  status: 'pending' | 'downloading' | 'completed' | 'error';
+  status: "pending" | "downloading" | "completed" | "error";
   progress?: number;
   error?: string;
   speed?: string;
@@ -29,28 +30,28 @@ interface Download {
 }
 
 interface DownloadQueueProps {
-  downloads: Download[];
+  downloads: IDownload[];
   onRemoveDownload: (id: string) => void;
   onClearCompleted: () => void;
 }
 
-const DownloadQueue: React.FC<DownloadQueueProps> = ({ 
-  downloads, 
-  onRemoveDownload, 
-  onClearCompleted 
+const DownloadQueue: React.FC<DownloadQueueProps> = ({
+  downloads,
+  onRemoveDownload,
+  onClearCompleted,
 }) => {
-  const activeDownloads = downloads.filter(d => d.status === 'downloading');
-  const completedDownloads = downloads.filter(d => d.status === 'completed');
-  const errorDownloads = downloads.filter(d => d.status === 'error');
-  const pendingDownloads = downloads.filter(d => d.status === 'pending');
+  const activeDownloads = downloads.filter((d) => d.status === "downloading");
+  const completedDownloads = downloads.filter((d) => d.status === "completed");
+  const errorDownloads = downloads.filter((d) => d.status === "error");
+  const pendingDownloads = downloads.filter((d) => d.status === "pending");
 
   const DownloadSection: React.FC<{
     title: string;
     icon: React.ComponentType<{ className?: string }>;
-    downloads: Download[];
+    downloads: IDownload[];
     count: number;
-    variant?: 'default' | 'secondary' | 'destructive';
-  }> = ({ title, icon: Icon, downloads, count, variant = 'secondary' }) => {
+    variant?: "default" | "secondary" | "destructive";
+  }> = ({ title, icon: Icon, downloads, count, variant = "secondary" }) => {
     if (count === 0) return null;
 
     return (
@@ -63,7 +64,7 @@ const DownloadQueue: React.FC<DownloadQueueProps> = ({
           </Badge>
         </div>
         <div className="space-y-2">
-          {downloads.map(download => (
+          {downloads.map((download) => (
             <DownloadItem
               key={download.id}
               download={download}
@@ -86,9 +87,9 @@ const DownloadQueue: React.FC<DownloadQueueProps> = ({
               {downloads.length}
             </Badge>
           </CardTitle>
-          
+
           {completedDownloads.length > 0 && (
-            <Button 
+            <Button
               variant="outline"
               size="sm"
               onClick={onClearCompleted}
@@ -107,9 +108,12 @@ const DownloadQueue: React.FC<DownloadQueueProps> = ({
             <div className="rounded-full bg-muted p-4 mb-4">
               <FolderOpen className="h-8 w-8 text-muted-foreground" />
             </div>
-            <h3 className="font-medium text-lg mb-2">Nenhum download na fila</h3>
+            <h3 className="font-medium text-lg mb-2">
+              Nenhum download na fila
+            </h3>
             <p className="text-muted-foreground text-sm max-w-sm">
-              Adicione uma URL do YouTube acima para começar a baixar seus vídeos favoritos
+              Adicione uma URL do YouTube acima para começar a baixar seus
+              vídeos favoritos
             </p>
           </div>
         ) : (
@@ -151,13 +155,23 @@ const DownloadQueue: React.FC<DownloadQueueProps> = ({
             />
 
             {/* Add separators between sections */}
-            {[activeDownloads, pendingDownloads, completedDownloads, errorDownloads]
-              .filter(arr => arr.length > 0)
-              .length > 1 && (
+            {[
+              activeDownloads,
+              pendingDownloads,
+              completedDownloads,
+              errorDownloads,
+            ].filter((arr) => arr.length > 0).length > 1 && (
               <div className="space-y-6">
-                {activeDownloads.length > 0 && (pendingDownloads.length > 0 || completedDownloads.length > 0 || errorDownloads.length > 0) && <Separator />}
-                {pendingDownloads.length > 0 && (completedDownloads.length > 0 || errorDownloads.length > 0) && <Separator />}
-                {completedDownloads.length > 0 && errorDownloads.length > 0 && <Separator />}
+                {activeDownloads.length > 0 &&
+                  (pendingDownloads.length > 0 ||
+                    completedDownloads.length > 0 ||
+                    errorDownloads.length > 0) && <Separator />}
+                {pendingDownloads.length > 0 &&
+                  (completedDownloads.length > 0 ||
+                    errorDownloads.length > 0) && <Separator />}
+                {completedDownloads.length > 0 && errorDownloads.length > 0 && (
+                  <Separator />
+                )}
               </div>
             )}
           </div>

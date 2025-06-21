@@ -7,7 +7,5 @@
     "allowSyntheticDefaultImports": true,
     "strict": true
   },
-  "include": [
-    "electron/**/*"
-  ]
+  "include": ["electron/**/*"]
 }

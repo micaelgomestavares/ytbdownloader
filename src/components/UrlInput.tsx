@@ -1,17 +1,10 @@
-import React, { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Badge } from "./ui/badge";
-import {
-  Download,
-  Clipboard,
-  AlertTriangle,
-  Link2,
-  Loader2,
-  Youtube,
-  List,
-} from "lucide-react";
+import { AlertTriangle, Clipboard, Download, Link2, List, Loader2, Youtube } from 'lucide-react';
+import type React from 'react';
+import { useState } from 'react';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Input } from './ui/input';
 
 interface UrlInputProps {
   onAddDownload: (url: string) => Promise<void>;
@@ -19,7 +12,7 @@ interface UrlInputProps {
 }
 
 const UrlInput: React.FC<UrlInputProps> = ({ onAddDownload, disabled }) => {
-  const [url, setUrl] = useState("");
+  const [url, setUrl] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -31,9 +24,9 @@ const UrlInput: React.FC<UrlInputProps> = ({ onAddDownload, disabled }) => {
 
     try {
       await onAddDownload(url.trim());
-      setUrl("");
+      setUrl('');
     } catch (error) {
-      console.error("Erro ao adicionar download:", error);
+      console.error('Erro ao adicionar download:', error);
     } finally {
       setIsProcessing(false);
     }
@@ -51,17 +44,17 @@ const UrlInput: React.FC<UrlInputProps> = ({ onAddDownload, disabled }) => {
         setUrl(text);
       }
     } catch (err) {
-      console.error("Erro ao colar da área de transferência:", err);
+      console.error('Erro ao colar da área de transferência:', err);
     }
   };
 
   const getUrlType = (url: string) => {
     if (!url) return null;
 
-    if (url.includes("playlist?list=")) {
-      return { type: "playlist", icon: List, label: "Playlist" };
+    if (url.includes('playlist?list=')) {
+      return { type: 'playlist', icon: List, label: 'Playlist' };
     } else if (isValidYouTubeUrl(url)) {
-      return { type: "video", icon: Youtube, label: "Vídeo" };
+      return { type: 'video', icon: Youtube, label: 'Vídeo' };
     }
 
     return null;
@@ -137,14 +130,10 @@ const UrlInput: React.FC<UrlInputProps> = ({ onAddDownload, disabled }) => {
           <div className="flex items-start gap-3 p-4 bg-destructive/10 rounded-md border border-destructive/20">
             <AlertTriangle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
             <div className="space-y-1">
-              <p className="text-sm font-medium text-destructive">
-                yt-dlp não encontrado
-              </p>
+              <p className="text-sm font-medium text-destructive">yt-dlp não encontrado</p>
               <p className="text-xs text-destructive/80">
-                Instale com:{" "}
-                <code className="bg-destructive/20 px-1 rounded">
-                  pip install yt-dlp
-                </code>
+                Instale com:{' '}
+                <code className="bg-destructive/20 px-1 rounded">pip install yt-dlp</code>
               </p>
             </div>
           </div>

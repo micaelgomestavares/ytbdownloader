@@ -1,31 +1,30 @@
-const { app, BrowserWindow } = require('electron');
-const path = require('path');
-const fs = require('fs');
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import type { BrowserWindow } from 'electron';
+import { app, BrowserWindow as ElectronBrowserWindow } from 'electron';
 
 // Importar módulos separados
-const DownloadManager = require('./downloadManager');
-const setupIPCHandlers = require('./ipcHandlers');
+import DownloadManager from './downloadManager';
+import setupIPCHandlers from './ipcHandlers';
 
 // Carregar variáveis de ambiente (opcional em produção)
 try {
   require('dotenv').config();
-} catch (error) {
+} catch {
   // Em produção, dotenv pode não estar disponível - isso é normal
   console.log('dotenv não disponível, usando variáveis padrão');
 }
 
 // Configuração da aplicação
-let mainWindow;
+let mainWindow: BrowserWindow | null = null;
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
-const REACT_DEV_PORT = process.env.REACT_DEV_PORT || 3000;
-const ELECTRON_REACT_TIMEOUT = parseInt(process.env.ELECTRON_REACT_TIMEOUT) || 8000;
 
 // Instanciar o gerenciador de downloads
 const downloadManager = new DownloadManager();
 
-function createWindow() {
+function createWindow(): void {
   // Definir o caminho correto do ícone baseado no ambiente
-  let iconPath;
+  let iconPath: string | undefined;
 
   if (app.isPackaged) {
     // Em produção, testar caminhos possíveis até encontrar o ícone
@@ -33,7 +32,7 @@ function createWindow() {
       path.join(process.resourcesPath, 'assets', 'favicon.ico'),
       path.join(process.resourcesPath, '..', 'assets', 'favicon.ico'),
       path.join(__dirname, '..', 'assets', 'favicon.ico'),
-      path.join(process.cwd(), 'assets', 'favicon.ico')
+      path.join(process.cwd(), 'assets', 'favicon.ico'),
     ];
 
     for (const testPath of possibleIconPaths) {
@@ -49,10 +48,10 @@ function createWindow() {
     }
   } else {
     // Em desenvolvimento, o ícone fica na pasta assets do projeto
-    iconPath = path.join(__dirname, '..', 'assets', 'favicon.ico');
+    iconPath = path.join(__dirname, '..', '..', 'assets', 'favicon.ico');
   }
 
-  mainWindow = new BrowserWindow({
+  mainWindow = new ElectronBrowserWindow({
     width: 1920,
     height: 1080,
     minWidth: 800,
@@ -60,7 +59,6 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      enableRemoteModule: false,
       preload: path.join(__dirname, 'preload.js'),
       webSecurity: true, // Enabled for security
       allowRunningInsecureContent: false,
@@ -70,35 +68,38 @@ function createWindow() {
     show: false,
     titleBarStyle: 'default',
     backgroundColor: '#ffffff',
-    simpleFullscreen: true,
     autoHideMenuBar: true,
   });
 
-  if (isDev) {
-    setTimeout(() => {
-      mainWindow.loadURL(`http://localhost:${REACT_DEV_PORT}`)
-        .then(() => {
-          console.log('✅ Página React carregada com sucesso');
-          mainWindow.webContents.openDevTools();
-        })
-        .catch((error) => {
-          console.error('❌ Erro ao carregar React:', error);
-          // Fallback para arquivo estático se o servidor não estiver funcionando
-          const htmlPath = path.join(__dirname, '..', 'build', 'index.html');
-          if (fs.existsSync(htmlPath)) {
-            mainWindow.loadFile(htmlPath);
-          }
-        });
-    }, ELECTRON_REACT_TIMEOUT);
-  } else {
-    const htmlPath = path.join(process.resourcesPath, 'app.asar', 'build', 'index.html');
+  // Maximizar a janela após criação
+  mainWindow.maximize();
 
+  if (isDev) {
+    // Em desenvolvimento, tentar primeiro o servidor React, senão fallback para build
+    const htmlPath = path.join(__dirname, '..', '..', 'build', 'index.html');
+    
+    if (fs.existsSync(htmlPath)) {
+      console.log('📂 Carregando HTML estático de:', htmlPath);
+      mainWindow.loadFile(htmlPath);
+    } else {
+      console.log('❌ Arquivo HTML não encontrado em:', htmlPath);
+    }
+  } else {
+    // Em produção, carregar do build local
+    const htmlPath = path.join(__dirname, '..', '..', 'build', 'index.html');
+    
     console.log('📂 Carregando HTML de:', htmlPath);
     console.log('📂 Arquivo existe?', fs.existsSync(htmlPath));
-    mainWindow.loadFile(htmlPath);
+    
+    if (fs.existsSync(htmlPath)) {
+      mainWindow.loadFile(htmlPath);
+    } else {
+      console.log('❌ Arquivo HTML não encontrado!');
+    }
   }
+
   mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
+    mainWindow?.show();
     if (isDev) {
       console.log('🚀 Janela pronta, carregando React...');
     }
@@ -114,14 +115,15 @@ function createWindow() {
   mainWindow.webContents.on('did-finish-load', () => {
     console.log('✅ Página carregada com sucesso');
   });
-
-  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
     console.log('❌ Erro ao carregar página:', errorCode, errorDescription);
   });
 }
 
 // Event listeners do Electron
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  createWindow();
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -130,7 +132,7 @@ app.on('window-all-closed', () => {
 });
 
 app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
+  if (ElectronBrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
 });

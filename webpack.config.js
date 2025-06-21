@@ -1,10 +1,10 @@
-const path = require('path');
+const path = require('node:path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const webpack = require('webpack');
 
-module.exports = (env, argv) => {
+module.exports = (_env, argv) => {
   const isDevelopment = argv.mode === 'development';
-  
+
   return {
     entry: './src/index.tsx',
     target: 'web',
@@ -15,16 +15,16 @@ module.exports = (env, argv) => {
         '@': path.resolve(__dirname, 'src'),
       },
       fallback: {
-        "path": require.resolve('path-browserify'),
-        "fs": false,
-        "os": require.resolve('os-browserify/browser'),
-        "crypto": require.resolve('crypto-browserify'),
-        "stream": require.resolve('stream-browserify'),
-        "util": require.resolve('util'),
-        "buffer": require.resolve('buffer'),
-        "events": require.resolve('events'),
-        "process": require.resolve('process/browser'),
-      }
+        path: require.resolve('path-browserify'),
+        fs: false,
+        os: require.resolve('os-browserify/browser'),
+        crypto: require.resolve('crypto-browserify'),
+        stream: require.resolve('stream-browserify'),
+        util: require.resolve('util'),
+        buffer: require.resolve('buffer'),
+        events: require.resolve('events'),
+        process: require.resolve('process/browser'),
+      },
     },
     module: {
       rules: [
@@ -67,7 +67,8 @@ module.exports = (env, argv) => {
       filename: 'js/[name].[contenthash].js',
       publicPath: isDevelopment ? '/' : './',
       clean: true,
-    },    plugins: [
+    },
+    plugins: [
       new HtmlWebpackPlugin({
         template: './public/index.html',
         filename: 'index.html',
@@ -80,7 +81,8 @@ module.exports = (env, argv) => {
         process: 'process/browser',
         Buffer: ['buffer', 'Buffer'],
       }),
-    ],devServer: {
+    ],
+    devServer: {
       port: 3000,
       hot: true,
       open: false,

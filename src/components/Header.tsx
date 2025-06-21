@@ -1,28 +1,31 @@
-import React from "react";
-import { Button } from "./ui/button";
+import {
+  ChevronDown,
+  Folder,
+  FolderOpen,
+  Moon,
+  Settings,
+  Sun,
+  Volume2,
+} from "lucide-react";
+import type React from "react";
+import logoImage from "../../public/logo.png";
+import { useTheme } from "../contexts/ThemeContext";
 import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
 import {
   DropdownMenu,
-  DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import {
-  FolderOpen,
-  Settings,
-  Folder,
-  ChevronDown,
-  Volume2,
-} from "lucide-react";
-
-import logoImage from "../../public/logo.png";
+import { Switch } from "./ui/switch";
 
 interface HeaderProps {
   onOpenDownloads: () => void;
@@ -43,6 +46,8 @@ const Header: React.FC<HeaderProps> = ({
   settings,
   onSettingsChange,
 }) => {
+  const { theme, setTheme } = useTheme();
+
   const getQualityLabel = (quality: string) => {
     switch (quality) {
       case "best":
@@ -74,6 +79,17 @@ const Header: React.FC<HeaderProps> = ({
           </div>
 
           <div className="flex items-center space-x-3">
+            {/* Botão Abrir Pasta de Downloads */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onOpenDownloads}
+              className="gap-2"
+            >
+              <FolderOpen className="h-4 w-4" />
+              <span className="hidden sm:inline">Downloads</span>
+            </Button>
+
             {/* Menu de configurações principal */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -124,6 +140,28 @@ const Header: React.FC<HeaderProps> = ({
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
                 <DropdownMenuSeparator />
+
+                <DropdownMenuLabel>Tema</DropdownMenuLabel>
+                <DropdownMenuItem
+                  className="flex items-center justify-between"
+                  onSelect={(e) => e.preventDefault()}
+                >
+                  <div className="flex items-center">
+                    {theme === "dark" ? (
+                      <Moon className="mr-2 h-4 w-4" />
+                    ) : (
+                      <Sun className="mr-2 h-4 w-4" />
+                    )}
+                    <span>{theme === "dark" ? "Escuro" : "Claro"}</span>
+                  </div>
+                  <Switch
+                    checked={theme === "dark"}
+                    onCheckedChange={(checked) =>
+                      setTheme(checked ? "dark" : "light")
+                    }
+                  />
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuLabel>Pasta de Downloads</DropdownMenuLabel>
                 {/* Opções de pasta */}
                 <DropdownMenuItem
@@ -138,13 +176,6 @@ const Header: React.FC<HeaderProps> = ({
                     </span>
                   </div>
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={onOpenDownloads}
-                  className="flex items-center"
-                >
-                  <FolderOpen className="mr-2 h-4 w-4" />
-                  <span>Abrir Pasta de Downloads</span>{" "}
-                </DropdownMenuItem>{" "}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

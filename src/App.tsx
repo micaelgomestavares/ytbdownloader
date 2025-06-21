@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from "react";
+import { Download, Trash2 } from "lucide-react";
+import type React from "react";
+import { useEffect, useState } from "react";
 import {
-  Header,
-  UrlInput,
   DownloadQueue,
-  StatusBar,
   FirstRunDialog,
+  Header,
+  StatusBar,
+  UrlInput,
 } from "./components";
 import { Button } from "./components/ui/button";
-import { Trash2, Download } from "lucide-react";
 
 // Types
 interface Download {
@@ -73,13 +74,13 @@ declare global {
       ) => Promise<string>;
       cancelDownload: (id: string) => Promise<boolean>;
       getDownloads: () => Promise<Download[]>;
-      removeDownload: (id: string) => Promise<boolean>;
-      getVideoInfo: (url: string) => Promise<{
+      removeDownload: (id: string) => Promise<boolean>;      getVideoInfo: (url: string) => Promise<{
         title: string;
         uploader?: string;
         duration?: string;
         thumbnail?: string;
       }>;
+      getPlaylistCount: (url: string) => Promise<number>;
 
       // Progress listeners
       onDownloadProgress: (callback: (data: Download) => void) => () => void;
@@ -182,29 +183,30 @@ const App: React.FC = () => {
       // Verificar se já está na fila
       if (downloadQueue.some((item) => item.url === url)) {
         throw new Error("URL já está na fila de downloads");
-      }
+      }      // Detectar se é uma playlist
+      const isPlaylist = url.includes('playlist?list=') || url.includes('&list=');
 
       // Criar item da fila inicialmente só com URL
       const queueItem: QueueItem = {
         url,
-        title: "Carregando informações...",
+        title: isPlaylist ? "Carregando informações da playlist..." : "Carregando informações...",
         isLoading: true,
       };
 
       // Adicionar à fila
       setDownloadQueue((prev) => [...prev, queueItem]);
 
-      // Buscar informações do vídeo em background
+      // Buscar informações do vídeo/playlist em background
       try {
         const videoInfo = await window.electronAPI.getVideoInfo(url);
 
-        // Atualizar com as informações do vídeo
+        // Atualizar com as informações do vídeo/playlist
         setDownloadQueue((prev) =>
           prev.map((item) =>
             item.url === url
               ? {
                   ...item,
-                  title: videoInfo.title || "Vídeo do YouTube",
+                  title: videoInfo.title || (isPlaylist ? "Playlist do YouTube" : "Vídeo do YouTube"),
                   uploader: videoInfo.uploader,
                   duration: videoInfo.duration,
                   thumbnail: videoInfo.thumbnail,
@@ -213,14 +215,14 @@ const App: React.FC = () => {
               : item
           )
         );
-      } catch (error) {
+      } catch {
         // Se falhar em buscar info, manter apenas com URL
         setDownloadQueue((prev) =>
           prev.map((item) =>
             item.url === url
               ? {
                   ...item,
-                  title: "Vídeo do YouTube",
+                  title: isPlaylist ? "Playlist do YouTube" : "Vídeo do YouTube",
                   isLoading: false,
                 }
               : item
@@ -452,10 +454,9 @@ const App: React.FC = () => {
                   </Button>
                 </div>
               </div>{" "}
-              <div className="space-y-2">
-                {downloadQueue.map((queueItem, index) => (
+              <div className="space-y-2">                {downloadQueue.map((queueItem) => (
                   <div
-                    key={index}
+                    key={queueItem.url}
                     className="flex items-center justify-between bg-muted p-3 rounded"
                   >
                     <div className="flex-1 mr-4">

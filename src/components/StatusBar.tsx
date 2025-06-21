@@ -1,14 +1,7 @@
-import React from 'react';
+import { AlertCircle, CheckCircle, Clock, Download, Inbox, Loader2 } from 'lucide-react';
+import type React from 'react';
 import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
-import { 
-  CheckCircle, 
-  AlertCircle, 
-  Clock, 
-  Download, 
-  Inbox,
-  Loader2
-} from 'lucide-react';
 
 interface Dependencies {
   checked: boolean;
@@ -22,35 +15,31 @@ interface StatusBarProps {
   activeDownloads: number;
 }
 
-const StatusBar: React.FC<StatusBarProps> = ({ 
-  dependencies, 
-  downloadsCount, 
-  activeDownloads 
-}) => {
+const StatusBar: React.FC<StatusBarProps> = ({ dependencies, downloadsCount, activeDownloads }) => {
   const getDependencyStatus = () => {
     if (!dependencies.checked) {
-      return { 
-        icon: Clock, 
-        text: 'Verificando dependências...', 
+      return {
+        icon: Clock,
+        text: 'Verificando dependências...',
         variant: 'secondary' as const,
-        className: 'text-yellow-600'
+        className: 'text-yellow-600',
       };
     }
-    
+
     if (dependencies.available) {
-      return { 
-        icon: CheckCircle, 
-        text: dependencies.message, 
+      return {
+        icon: CheckCircle,
+        text: dependencies.message,
         variant: 'secondary' as const,
-        className: 'text-green-600'
+        className: 'text-green-600',
       };
     }
-    
-    return { 
-      icon: AlertCircle, 
-      text: dependencies.message, 
+
+    return {
+      icon: AlertCircle,
+      text: dependencies.message,
       variant: 'destructive' as const,
-      className: 'text-red-600'
+      className: 'text-red-600',
     };
   };
 
@@ -79,7 +68,8 @@ const StatusBar: React.FC<StatusBarProps> = ({
                   <Download className="h-4 w-4 text-blue-600" />
                 </div>
                 <span className="text-xs font-medium">
-                  {activeDownloads} download{activeDownloads !== 1 ? 's' : ''} ativo{activeDownloads !== 1 ? 's' : ''}
+                  {activeDownloads} download{activeDownloads !== 1 ? 's' : ''} ativo
+                  {activeDownloads !== 1 ? 's' : ''}
                 </span>
                 <Badge variant="default" className="text-xs animate-pulse">
                   Em andamento

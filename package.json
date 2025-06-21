@@ -2,16 +2,22 @@
   "name": "youtube-to-mp3-converter",
   "version": "1.0.0",
   "description": "Um conversor moderno de vídeos do YouTube para MP3 usando Electron, React e TypeScript",
-  "main": "electron/main.js",
+  "main": "dist/electron/main.js",
   "homepage": "./",
   "scripts": {
     "build:react": "webpack --mode production --config webpack.config.js",
+    "build:electron": "tsc -p tsconfig.electron.json",
     "build:installer": "node scripts/build-installer.js",
     "build:portable": "node scripts/build-portable.js",
     "download-binaries": "node scripts/download-binaries.js",
-    "start": "electron .",
+    "start": "npm run build:electron && electron .",
+    "start:dev": "electron electron/main.ts",
     "clean": "node scripts/clean.js",
-    "postinstall": "electron-builder install-app-deps"
+    "postinstall": "electron-builder install-app-deps",
+    "format": "biome format --write .",
+    "lint": "biome lint .",
+    "check": "biome check .",
+    "check:fix": "biome check --fix ."
   },
   "keywords": [
     "youtube",
@@ -46,6 +52,7 @@
     "@babel/preset-env": "^7.27.2",
     "@babel/preset-react": "^7.27.1",
     "@babel/preset-typescript": "^7.27.1",
+    "@biomejs/biome": "^2.0.4",
     "@types/node": "^24.0.3",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
@@ -69,6 +76,7 @@
     "stream-browserify": "^3.0.0",
     "style-loader": "^4.0.0",
     "tailwindcss": "^3.4.14",
+    "ts-node": "^10.9.2",
     "typescript": "^5.8.3",
     "wait-on": "^8.0.3",
     "webpack": "^5.99.9",
@@ -85,7 +93,7 @@
       "buildResources": "assets"
     },
     "files": [
-      "electron/**/*",
+      "dist/electron/**/*",
       "build/**/*",
       "node_modules/**/*",
       "package.json",

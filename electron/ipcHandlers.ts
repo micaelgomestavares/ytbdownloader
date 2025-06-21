@@ -1,47 +1,73 @@
-const { ipcMain, dialog, shell, app } = require('electron');
-const fs = require('fs');
-const path = require('path');
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import type { BrowserWindow } from 'electron';
+import { app, dialog, ipcMain, shell } from 'electron';
+import type DownloadManager from './downloadManager';
 
-function setupIPCHandlers(mainWindow, downloadManager) {
+interface Settings {
+  downloadPath: string;
+  quality: string;
+  format: string;
+  isFirstRun?: boolean;
+}
+
+interface SaveResult {
+  success: boolean;
+  error?: string;
+}
+
+interface OpenResult {
+  success: boolean;
+  error?: string;
+}
+
+interface FirstRunDialogResult {
+  success: boolean;
+  path?: string;
+  cancelled?: boolean;
+  error?: string;
+}
+
+function setupIPCHandlers(mainWindow: BrowserWindow, downloadManager: DownloadManager): void {
   // Handlers de sistema
-  ipcMain.handle('select-folder', async (event, title) => {
+  ipcMain.handle('select-folder', async (_event, title: string) => {
     const result = await dialog.showOpenDialog(mainWindow, {
       title,
-      properties: ['openDirectory']
+      properties: ['openDirectory'],
     });
 
     return result.canceled ? null : result.filePaths[0];
   });
 
-  ipcMain.handle('get-app-data-path', () => {
+  ipcMain.handle('get-app-data-path', (): string => {
     return app.getPath('userData');
   });
 
-  ipcMain.handle('get-downloads-path', () => {
+  ipcMain.handle('get-downloads-path', (): string => {
     return app.getPath('downloads');
   });
 
-  ipcMain.handle('get-app-version', () => {
+  ipcMain.handle('get-app-version', (): string => {
     return app.getVersion();
   });
 
-  ipcMain.handle('is-dev', () => {
+  ipcMain.handle('is-dev', (): boolean => {
     const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
     return isDev;
   });
 
-  ipcMain.handle('open-dev-tools', () => {
+  ipcMain.handle('open-dev-tools', (): void => {
     if (mainWindow) {
       mainWindow.webContents.openDevTools();
     }
   });
 
-  ipcMain.handle('open-external', async (event, url) => {
+  ipcMain.handle('open-external', async (_event, url: string): Promise<void> => {
     shell.openExternal(url);
   });
 
   // Handlers de configurações
-  ipcMain.handle('save-settings', async (event, settings) => {
+  ipcMain.handle('save-settings', async (_event, settings: Settings): Promise<SaveResult> => {
     try {
       const userDataPath = app.getPath('userData');
       const settingsPath = path.join(userDataPath, 'settings.json');
@@ -58,14 +84,18 @@ function setupIPCHandlers(mainWindow, downloadManager) {
 
       // Se o downloadPath foi alterado e não é o padrão do sistema,
       // também salvar no registro do Windows para futura referência
-      if (process.platform === 'win32' && settings.downloadPath && settings.downloadPath !== app.getPath('downloads')) {
+      if (
+        process.platform === 'win32' &&
+        settings.downloadPath &&
+        settings.downloadPath !== app.getPath('downloads')
+      ) {
         try {
-          const { execSync } = require('child_process');
+          const { execSync } = require('node:child_process');
           const regCmd = `reg add "HKCU\\Software\\YouTube MP3 Converter" /v DownloadFolder /t REG_SZ /d "${settings.downloadPath}" /f`;
           execSync(regCmd, { stdio: 'ignore' });
           console.log('📁 Pasta de downloads salva no registro do Windows');
         } catch (error) {
-          console.log('⚠️ Não foi possível salvar no registro:', error.message);
+          console.log('⚠️ Não foi possível salvar no registro:', (error as Error).message);
           // Não falhar se não conseguir salvar no registro
         }
       }
@@ -73,11 +103,11 @@ function setupIPCHandlers(mainWindow, downloadManager) {
       return { success: true };
     } catch (error) {
       console.error('Erro ao salvar configurações:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: (error as Error).message };
     }
   });
 
-  ipcMain.handle('load-settings', async () => {
+  ipcMain.handle('load-settings', async (): Promise<Settings | null> => {
     try {
       const userDataPath = app.getPath('userData');
       const settingsPath = path.join(userDataPath, 'settings.json');
@@ -90,24 +120,22 @@ function setupIPCHandlers(mainWindow, downloadManager) {
       return {
         downloadPath: app.getPath('downloads'),
         quality: 'best',
-        format: 'mp3'
+        format: 'mp3',
       };
-    } catch (error) {
+    } catch {
       return null;
     }
   });
 
-  ipcMain.handle('get-settings', async () => {
+  ipcMain.handle('get-settings', async (): Promise<Settings> => {
     try {
       const userDataPath = app.getPath('userData');
-      const settingsPath = path.join(userDataPath, 'settings.json');
-
-      // Configurações padrão
-      let defaultSettings = {
+      const settingsPath = path.join(userDataPath, 'settings.json'); // Configurações padrão
+      const defaultSettings: Settings = {
         downloadPath: app.getPath('downloads'),
         quality: 'best',
         format: 'mp3',
-        isFirstRun: false
+        isFirstRun: false,
       };
 
       // Verificar se é primeira execução (não existe settings.json)
@@ -120,20 +148,21 @@ function setupIPCHandlers(mainWindow, downloadManager) {
       // No Windows, verificar se existe configuração do instalador no registro
       if (process.platform === 'win32') {
         try {
-          const { execSync } = require('child_process');
+          const { execSync } = require('node:child_process');
           const regQuery = 'reg query "HKCU\\Software\\YouTube MP3 Converter" /v DownloadFolder';
-          const result = execSync(regQuery, { encoding: 'utf8', stdio: 'pipe' });
-
-          // Extrair o caminho da pasta do resultado do registro
+          const result = execSync(regQuery, {
+            encoding: 'utf8',
+            stdio: 'pipe',
+          }); // Extrair o caminho da pasta do resultado do registro
           const match = result.match(/DownloadFolder\s+REG_SZ\s+(.+)/);
-          if (match && match[1]) {
+          if (match?.[1]) {
             const installerPath = match[1].trim();
             if (fs.existsSync(installerPath)) {
               defaultSettings.downloadPath = installerPath;
               console.log('📁 Usando pasta de downloads do instalador:', installerPath);
             }
           }
-        } catch (error) {
+        } catch {
           // Ignorar erro se não conseguir ler o registro (instalador não usado)
           console.log('📁 Usando pasta padrão de downloads');
         }
@@ -163,13 +192,13 @@ function setupIPCHandlers(mainWindow, downloadManager) {
       return {
         downloadPath: app.getPath('downloads'),
         quality: 'best',
-        format: 'mp3'
+        format: 'mp3',
       };
     }
   });
 
   // Handlers de pasta/arquivo
-  ipcMain.handle('show-in-folder', async (event, filePath) => {
+  ipcMain.handle('show-in-folder', async (_event, filePath: string): Promise<OpenResult> => {
     try {
       if (!filePath) {
         // Se não há path específico, abrir a pasta de downloads padrão
@@ -197,11 +226,11 @@ function setupIPCHandlers(mainWindow, downloadManager) {
       }
     } catch (error) {
       console.error('Error opening folder:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: (error as Error).message };
     }
   });
 
-  ipcMain.handle('open-folder', async (event, folderPath) => {
+  ipcMain.handle('open-folder', async (_event, folderPath: string): Promise<OpenResult> => {
     try {
       // Verificar se a pasta existe
       if (fs.existsSync(folderPath)) {
@@ -215,17 +244,17 @@ function setupIPCHandlers(mainWindow, downloadManager) {
         return { success: true };
       }
     } catch (error) {
-      return { success: false, error: error.message };
+      return { success: false, error: (error as Error).message };
     }
   });
 
-  ipcMain.handle('show-first-run-dialog', async () => {
+  ipcMain.handle('show-first-run-dialog', async (): Promise<FirstRunDialogResult> => {
     try {
       const result = await dialog.showOpenDialog(mainWindow, {
         title: 'Escolher Pasta de Downloads',
         message: 'Escolha onde você deseja salvar os arquivos MP3 baixados:',
         properties: ['openDirectory'],
-        defaultPath: app.getPath('documents')
+        defaultPath: app.getPath('documents'),
       });
 
       if (!result.canceled && result.filePaths.length > 0) {
@@ -234,12 +263,12 @@ function setupIPCHandlers(mainWindow, downloadManager) {
         // Salvar no registro do Windows
         if (process.platform === 'win32') {
           try {
-            const { execSync } = require('child_process');
+            const { execSync } = require('node:child_process');
             const regCmd = `reg add "HKCU\\Software\\YouTube MP3 Converter" /v DownloadFolder /t REG_SZ /d "${selectedPath}" /f`;
             execSync(regCmd, { stdio: 'ignore' });
             console.log('📁 Nova pasta de downloads salva no registro:', selectedPath);
           } catch (error) {
-            console.log('⚠️ Não foi possível salvar no registro:', error.message);
+            console.log('⚠️ Não foi possível salvar no registro:', (error as Error).message);
           }
         }
 
@@ -249,42 +278,45 @@ function setupIPCHandlers(mainWindow, downloadManager) {
       return { success: false, cancelled: true };
     } catch (error) {
       console.error('Erro ao mostrar diálogo de primeira execução:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: (error as Error).message };
     }
   });
-
   // Handlers de download
-  ipcMain.handle('add-download', async (event, url, options) => {
+  ipcMain.handle('add-download', async (_event, url: string, options: any): Promise<string> => {
     return downloadManager.addDownload(url, options);
   });
 
-  ipcMain.handle('cancel-download', async (event, id) => {
+  ipcMain.handle('cancel-download', async (_event, id: string): Promise<boolean> => {
     return downloadManager.cancelDownload(id);
   });
 
-  ipcMain.handle('get-downloads', async () => {
+  ipcMain.handle('get-downloads', async (): Promise<any[]> => {
     return downloadManager.getDownloads();
   });
 
-  ipcMain.handle('remove-download', async (event, id) => {
+  ipcMain.handle('remove-download', async (_event, id: string): Promise<boolean> => {
     return downloadManager.removeDownload(id);
   });
 
-  ipcMain.handle('get-video-info', async (event, url) => {
+  ipcMain.handle('get-video-info', async (_event, url: string): Promise<any> => {
     return downloadManager.getVideoInfo(url);
   });
 
-  ipcMain.handle('start-download', async (event, url, options) => {
+  ipcMain.handle('get-playlist-count', async (_event, url: string): Promise<number> => {
+    return downloadManager.getPlaylistCount(url);
+  });
+
+  ipcMain.handle('start-download', async (_event, url: string, options: any): Promise<string> => {
     return downloadManager.addDownload(url, options);
   });
 
-  ipcMain.handle('pause-download', async (event, id) => {
+  ipcMain.handle('pause-download', async (_event, id: string): Promise<boolean> => {
     return downloadManager.pauseDownload(id);
   });
 
-  ipcMain.handle('resume-download', async (event, id) => {
+  ipcMain.handle('resume-download', async (_event, id: string): Promise<boolean> => {
     return downloadManager.resumeDownload(id);
   });
 }
 
-module.exports = setupIPCHandlers;
+export default setupIPCHandlers;

@@ -1,26 +1,33 @@
-export { Button } from "./button"
-export { Input } from "./input"
-export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent } from "./card"
-export { Progress } from "./progress"
-export { Separator } from "./separator"
-export { Switch } from "./switch"
-export { Badge } from "./badge"
-export { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogDescription, 
-  DialogFooter 
-} from "./dialog"
+export { Badge } from "./badge";
+export { Button } from "./button";
+export {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "./card";
+export {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "./dialog";
 export {
   DropdownMenu,
-  DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
-  DropdownMenuSubTrigger
-} from "./dropdown-menu"
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "./dropdown-menu";
+export { Input } from "./input";
+export { Progress } from "./progress";
+export { Separator } from "./separator";
+export { Switch } from "./switch";
