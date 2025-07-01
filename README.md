@@ -81,49 +81,10 @@ npm run dev
 - `npm run build:electron` - Builda o executável do Electron
 
 ### Distribuição
-- `npm run build:win` - Cria executável para Windows (.exe + instalador)
-- `npm run build:mac` - Cria executável para macOS (.dmg)
-- `npm run build:linux` - Cria executável para Linux (.AppImage, .deb, .rpm)
-- `npm run build:all` - Cria executáveis para todas as plataformas
+- `npm run build:win` - Cria executável portable para Windows
 
 ### Outros
-- `npm run pack` - Empacota sem criar instalador
-- `npm run clean` - Limpa arquivos de build
 - `npm start` - Inicia o app já buildado
-
-## 🏗️ Estrutura do Projeto
-
-```
-youtube-to-mp3-converter/
-├── assets/                 # Ícones e recursos
-├── build/                  # Build do React (gerado)
-├── dist/                   # Executáveis finais (gerado)
-├── downloads/              # Pasta padrão de downloads
-├── electron/               # Código do processo principal
-│   ├── main.js            # Processo principal do Electron
-│   └── preload.js         # Script de ponte segura
-├── public/                # Arquivos públicos
-│   └── index.html         # Template HTML
-├── src/                   # Código fonte React
-│   ├── components/        # Componentes React
-│   │   ├── ui/           # Componentes shadcn/ui
-│   │   ├── DownloadItem.tsx
-│   │   ├── DownloadQueue.tsx
-│   │   ├── Header.tsx
-│   │   ├── Settings.tsx
-│   │   ├── StatusBar.tsx
-│   │   └── UrlInput.tsx
-│   ├── lib/              # Utilitários
-│   ├── App.tsx           # Componente principal
-│   ├── index.tsx         # Ponto de entrada
-│   └── index.css         # Estilos globais
-├── temp/                 # Arquivos temporários
-├── package.json          # Configurações do projeto
-├── webpack.config.js     # Configuração do Webpack
-├── tailwind.config.js    # Configuração do Tailwind
-├── tsconfig.json         # Configuração do TypeScript
-└── components.json       # Configuração do shadcn/ui
-```
 
 ## 🎯 Como Usar
 
@@ -147,7 +108,6 @@ youtube-to-mp3-converter/
 - **Melhor áudio**: Prioriza a qualidade do áudio
 
 ### Personalização
-- Tema escuro/claro automático
 - Pasta de download personalizada
 - Limpeza automática de arquivos temporários
 

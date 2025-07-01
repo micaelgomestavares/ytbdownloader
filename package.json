@@ -7,7 +7,6 @@
   "scripts": {
     "build:react": "webpack --mode production --config webpack.config.js",
     "build:electron": "tsc -p tsconfig.electron.json",
-    "build:installer": "node scripts/build-installer.js",
     "build:portable": "node scripts/build-portable.js",
     "download-binaries": "node scripts/download-binaries.js",
     "start": "npm run build:electron && electron .",
@@ -28,7 +27,7 @@
     "typescript",
     "music"
   ],
-  "author": "Seu Nome <seu.email@example.com>",
+  "author": "Micael Gomes <contato.micaeloficial@gmail.com>",
   "license": "MIT",
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.14",
@@ -179,7 +178,7 @@
     "detectUpdateChannel": true,
     "publish": {
       "provider": "github",
-      "owner": "your-github-username",
+      "owner": "micaelgomestavares",
       "repo": "youtube-to-mp3-converter"
     }
   }

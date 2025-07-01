@@ -11,7 +11,7 @@ import {
 import { Button } from "./components/ui/button";
 
 // Types
-interface Download {
+interface IDownload {
   id: string;
   url: string;
   title: string;
@@ -37,13 +37,6 @@ interface QueueItem {
 interface AppSettings {
   quality: string;
   outputFolder: string;
-}
-
-interface BackendSettings {
-  quality: string;
-  downloadPath?: string;
-  outputFolder?: string;
-  format?: string;
 }
 
 // Extend Window interface for Electron API
@@ -73,8 +66,9 @@ declare global {
         }
       ) => Promise<string>;
       cancelDownload: (id: string) => Promise<boolean>;
-      getDownloads: () => Promise<Download[]>;
-      removeDownload: (id: string) => Promise<boolean>;      getVideoInfo: (url: string) => Promise<{
+      getDownloads: () => Promise<IDownload[]>;
+      removeDownload: (id: string) => Promise<boolean>;
+      getVideoInfo: (url: string) => Promise<{
         title: string;
         uploader?: string;
         duration?: string;
@@ -83,15 +77,15 @@ declare global {
       getPlaylistCount: (url: string) => Promise<number>;
 
       // Progress listeners
-      onDownloadProgress: (callback: (data: Download) => void) => () => void;
-      onDownloadComplete: (callback: (data: Download) => void) => () => void;
-      onDownloadError: (callback: (data: Download) => void) => () => void;
+      onDownloadProgress: (callback: (data: IDownload) => void) => () => void;
+      onDownloadComplete: (callback: (data: IDownload) => void) => () => void;
+      onDownloadError: (callback: (data: IDownload) => void) => () => void;
     };
   }
 }
 
 const App: React.FC = () => {
-  const [downloads, setDownloads] = useState<Download[]>([]);
+  const [downloads, setDownloads] = useState<IDownload[]>([]);
   const [downloadQueue, setDownloadQueue] = useState<QueueItem[]>([]); // Mudança para QueueItem
   const [isDownloading, setIsDownloading] = useState<boolean>(false); // Estado de download ativo
   const [showFirstRunDialog, setShowFirstRunDialog] = useState<boolean>(false);
@@ -99,11 +93,14 @@ const App: React.FC = () => {
     quality: "best",
     outputFolder: "",
   });
+
   const dependencies = {
     checked: true,
     available: true,
     message: "Pronto para usar",
   };
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: setupEventListeners doesn't need dependencies
   useEffect(() => {
     loadSettings();
     loadDownloads();
@@ -111,6 +108,7 @@ const App: React.FC = () => {
     const cleanup = setupEventListeners();
     return cleanup;
   }, []);
+
   const loadSettings = async (): Promise<void> => {
     try {
       const savedSettings: any = await window.electronAPI.getSettings();
@@ -143,6 +141,7 @@ const App: React.FC = () => {
       console.error("Error loading downloads:", error);
     }
   };
+
   const setupEventListeners = (): (() => void) => {
     const unsubscribeProgress = window.electronAPI.onDownloadProgress(
       (data) => {
@@ -173,6 +172,7 @@ const App: React.FC = () => {
       unsubscribeError();
     };
   };
+
   const addToQueue = async (url: string): Promise<void> => {
     try {
       // Validar URL
@@ -183,13 +183,16 @@ const App: React.FC = () => {
       // Verificar se já está na fila
       if (downloadQueue.some((item) => item.url === url)) {
         throw new Error("URL já está na fila de downloads");
-      }      // Detectar se é uma playlist
-      const isPlaylist = url.includes('playlist?list=') || url.includes('&list=');
+      } // Detectar se é uma playlist
+      const isPlaylist =
+        url.includes("playlist?list=") || url.includes("&list=");
 
       // Criar item da fila inicialmente só com URL
       const queueItem: QueueItem = {
         url,
-        title: isPlaylist ? "Carregando informações da playlist..." : "Carregando informações...",
+        title: isPlaylist
+          ? "Carregando informações da playlist..."
+          : "Carregando informações...",
         isLoading: true,
       };
 
@@ -206,7 +209,9 @@ const App: React.FC = () => {
             item.url === url
               ? {
                   ...item,
-                  title: videoInfo.title || (isPlaylist ? "Playlist do YouTube" : "Vídeo do YouTube"),
+                  title:
+                    videoInfo.title ||
+                    (isPlaylist ? "Playlist do YouTube" : "Vídeo do YouTube"),
                   uploader: videoInfo.uploader,
                   duration: videoInfo.duration,
                   thumbnail: videoInfo.thumbnail,
@@ -222,7 +227,9 @@ const App: React.FC = () => {
             item.url === url
               ? {
                   ...item,
-                  title: isPlaylist ? "Playlist do YouTube" : "Vídeo do YouTube",
+                  title: isPlaylist
+                    ? "Playlist do YouTube"
+                    : "Vídeo do YouTube",
                   isLoading: false,
                 }
               : item
@@ -235,7 +242,7 @@ const App: React.FC = () => {
       console.error("Error adding to queue:", error);
 
       // Add error download to UI
-      const errorDownload: Download = {
+      const errorDownload: IDownload = {
         id: Date.now().toString(),
         url,
         title: "Erro ao adicionar à fila",
@@ -247,6 +254,7 @@ const App: React.FC = () => {
       setDownloads((prev) => [...prev, errorDownload]);
     }
   };
+
   const startAllDownloads = async (): Promise<void> => {
     if (downloadQueue.length === 0) {
       console.log("Nenhuma URL na fila para baixar");
@@ -275,7 +283,7 @@ const App: React.FC = () => {
           );
 
           // Adicionar download à lista imediatamente
-          const newDownload: Download = {
+          const newDownload: IDownload = {
             id: downloadId,
             url: queueItem.url,
             title: queueItem.title || "Preparando download...",
@@ -301,7 +309,7 @@ const App: React.FC = () => {
           );
 
           // Add error download to UI
-          const errorDownload: Download = {
+          const errorDownload: IDownload = {
             id: Date.now().toString(),
             url: queueItem.url,
             title: "Erro ao iniciar download",
@@ -408,6 +416,11 @@ const App: React.FC = () => {
       console.error("Error selecting folder:", error);
     }
   };
+
+  // Função para verificar se há itens carregando na fila
+  const hasLoadingItems = (): boolean => {
+    return downloadQueue.some((item) => item.isLoading);
+  };
   return (
     <div className="min-h-screen flex flex-col">
       {/* Diálogo de Primeira Execução */}
@@ -438,11 +451,15 @@ const App: React.FC = () => {
                 <div className="flex gap-2">
                   <Button
                     onClick={startAllDownloads}
-                    disabled={isDownloading}
+                    disabled={isDownloading || hasLoadingItems()}
                     className="gap-2"
                   >
                     <Download className="h-4 w-4" />
-                    {isDownloading ? "Baixando..." : "Baixar"}
+                    {isDownloading
+                      ? "Baixando..."
+                      : hasLoadingItems()
+                      ? "Carregando..."
+                      : "Baixar"}
                   </Button>
                   <Button
                     onClick={clearQueue}
@@ -454,7 +471,9 @@ const App: React.FC = () => {
                   </Button>
                 </div>
               </div>{" "}
-              <div className="space-y-2">                {downloadQueue.map((queueItem) => (
+              <div className="space-y-2">
+                {" "}
+                {downloadQueue.map((queueItem) => (
                   <div
                     key={queueItem.url}
                     className="flex items-center justify-between bg-muted p-3 rounded"

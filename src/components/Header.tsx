@@ -2,14 +2,11 @@ import {
   ChevronDown,
   Folder,
   FolderOpen,
-  Moon,
   Settings,
-  Sun,
   Volume2,
 } from "lucide-react";
 import type React from "react";
 import logoImage from "../../public/logo.png";
-import { useTheme } from "../contexts/ThemeContext";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import {
@@ -25,7 +22,6 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { Switch } from "./ui/switch";
 
 interface HeaderProps {
   onOpenDownloads: () => void;
@@ -46,8 +42,6 @@ const Header: React.FC<HeaderProps> = ({
   settings,
   onSettingsChange,
 }) => {
-  const { theme, setTheme } = useTheme();
-
   const getQualityLabel = (quality: string) => {
     switch (quality) {
       case "best":
@@ -87,7 +81,7 @@ const Header: React.FC<HeaderProps> = ({
               className="gap-2"
             >
               <FolderOpen className="h-4 w-4" />
-              <span className="hidden sm:inline">Downloads</span>
+              <span className="hidden sm:inline">Pasta de Downloads</span>
             </Button>
 
             {/* Menu de configurações principal */}
@@ -141,27 +135,6 @@ const Header: React.FC<HeaderProps> = ({
                 </DropdownMenuSub>
                 <DropdownMenuSeparator />
 
-                <DropdownMenuLabel>Tema</DropdownMenuLabel>
-                <DropdownMenuItem
-                  className="flex items-center justify-between"
-                  onSelect={(e) => e.preventDefault()}
-                >
-                  <div className="flex items-center">
-                    {theme === "dark" ? (
-                      <Moon className="mr-2 h-4 w-4" />
-                    ) : (
-                      <Sun className="mr-2 h-4 w-4" />
-                    )}
-                    <span>{theme === "dark" ? "Escuro" : "Claro"}</span>
-                  </div>
-                  <Switch
-                    checked={theme === "dark"}
-                    onCheckedChange={(checked) =>
-                      setTheme(checked ? "dark" : "light")
-                    }
-                  />
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
                 <DropdownMenuLabel>Pasta de Downloads</DropdownMenuLabel>
                 {/* Opções de pasta */}
                 <DropdownMenuItem
