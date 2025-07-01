@@ -2,6 +2,14 @@
 
 Um conversor moderno e elegante de vídeos do YouTube para MP3, construído com **Electron**, **React**, **TypeScript** e **shadcn/ui**.
 
+## 📦 Download
+
+Baixe a versão mais recente do aplicativo para Windows:
+
+- 🪟 [Download para Windows (Portable .exe)](https://github.com/micaelgomestavares/ytbdownloader/releases/download/V1.0.0/YTBD-Portable-1.0.0.exe)
+
+> **Não requer instalação.** Basta baixar, abrir o arquivo `.exe` e começar a usar!
+
 ## ✨ Características
 
 - 🎨 **Interface Moderna**: Design elegante com shadcn/ui e Tailwind CSS
