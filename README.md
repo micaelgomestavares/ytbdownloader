@@ -13,7 +13,6 @@ Baixe a versão mais recente do aplicativo para Windows:
 ## ✨ Características
 
 - 🎨 **Interface Moderna**: Design elegante com shadcn/ui e Tailwind CSS
-- 🌙 **Tema Dark/Light**: Suporte completo a temas
 - 📱 **Responsivo**: Interface adaptável para diferentes tamanhos de tela
 - 🎯 **TypeScript**: Código robusto e tipado
 - 📊 **Progresso em Tempo Real**: Acompanhe o progresso dos downloads
