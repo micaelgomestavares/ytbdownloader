@@ -1,0 +1,41 @@
+name: Release Portable
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-portable:
+    name: Build Windows portable
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download yt-dlp and ffmpeg
+        run: npm run download-binaries
+
+      - name: Build portable executable
+        run: npm run build:portable
+
+      - name: Upload portable to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*Portable*.exe
+          fail_on_unmatched_files: true
+          generate_release_notes: true

@@ -4,6 +4,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import type { BrowserWindow } from 'electron';
 import { app } from 'electron';
+import { buildYtDlpArgs } from './downloadOptions';
 
 interface DownloadOptions {
   title?: string;
@@ -12,6 +13,8 @@ interface DownloadOptions {
   outputPath?: string;
   quality?: string;
   format?: string;
+  cookiesBrowser?: string;
+  cookiesFile?: string;
 }
 
 interface Download {
@@ -25,6 +28,7 @@ interface Download {
   speed: string;
   eta: string;
   error?: string;
+  outputFile?: string;
 }
 
 interface VideoInfo {
@@ -38,10 +42,12 @@ class DownloadManager {
   private downloads: Map<string, Download> = new Map();
   private processes: Map<string, ChildProcess> = new Map();
   private ytDlpPath: string | null;
+  private ffmpegPath: string | null;
   private mainWindow: BrowserWindow | null = null;
 
   constructor() {
     this.ytDlpPath = this.findYtDlp();
+    this.ffmpegPath = this.findFfmpeg();
   }
 
   setMainWindow(window: BrowserWindow): void {
@@ -110,6 +116,33 @@ class DownloadManager {
     return null;
   }
 
+  private findFfmpeg(): string | null {
+    let appPath: string;
+
+    if (app.isPackaged) {
+      appPath = path.join(process.resourcesPath, 'binaries');
+    } else {
+      appPath = path.join(__dirname, '..', '..', 'binaries');
+    }
+
+    const bundledFfmpeg = path.join(appPath, 'ffmpeg.exe');
+
+    if (fs.existsSync(bundledFfmpeg)) {
+      console.log('Usando ffmpeg incluido:', bundledFfmpeg);
+      return bundledFfmpeg;
+    }
+
+    try {
+      const { execSync } = require('node:child_process');
+      execSync('ffmpeg -version', { stdio: 'ignore' });
+      console.log('Usando ffmpeg do sistema');
+      return 'ffmpeg';
+    } catch {
+      console.log('ffmpeg nao encontrado; formatos de audio podem falhar');
+      return null;
+    }
+  }
+
   addDownload(url: string, options: DownloadOptions = {}): string {
     const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
     const download: Download = {
@@ -139,11 +172,13 @@ class DownloadManager {
     const outputPath = options.outputPath || app.getPath('downloads');
     const quality = options.quality || 'best';
     const format = options.format || 'mp3';
+    const cookiesBrowser = options.cookiesBrowser || 'none';
+    const cookiesFile = options.cookiesFile || '';
 
     // Detectar se é uma playlist
     const isPlaylist = download.url.includes('playlist?list=') || download.url.includes('&list=');
 
-    const args = [
+    let args = [
       download.url,
       '--format',
       this.getFormatString(quality, format),
@@ -163,6 +198,30 @@ class DownloadManager {
       '--continue', // Continuar downloads interrompidos
       '--no-abort-on-unavailable-fragment', // Não abortar por fragmentos indisponíveis
     ];
+
+    if (format === 'mp3' || format === 'm4a' || format === 'wav') {
+      args.push('--extract-audio', '--audio-format', format);
+
+      if (quality !== 'best' && quality !== 'worst') {
+        args.push('--audio-quality', quality);
+      }
+    } else if (format === 'mp4' || format === 'webm' || format === 'mkv') {
+      args.push('--merge-output-format', format);
+    }
+
+    if (this.ffmpegPath && this.ffmpegPath !== 'ffmpeg') {
+      args.push('--ffmpeg-location', path.dirname(this.ffmpegPath));
+    }
+
+    args = buildYtDlpArgs({
+      url: download.url,
+      outputPath,
+      quality,
+      format,
+      ffmpegPath: this.ffmpegPath,
+      cookiesBrowser,
+      cookiesFile,
+    });
 
     // Para playlists, remover template personalizado e usar abordagem mais simples
     if (isPlaylist) {
@@ -199,8 +258,12 @@ class DownloadManager {
       }
     });
 
+    let errorOutput = '';
+
     process.stderr?.on('data', (data: Buffer) => {
-      console.error('yt-dlp error:', data.toString());
+      const errorText = data.toString();
+      errorOutput += errorText;
+      console.error('yt-dlp error:', errorText);
     });
 
     process.on('close', (code: number | null) => {
@@ -219,14 +282,14 @@ class DownloadManager {
             if (this.mainWindow) {
               this.mainWindow.webContents.send('download-complete', {
                 ...download,
-                outputFile: 'Download concluído com sucesso',
+                outputFile: download.outputFile || 'Download concluido com sucesso',
               });
             }
           }, 1500);
         }
       } else {
         download.status = 'error';
-        download.error = `Download failed with code ${code}`;
+        download.error = this.formatProcessError(code, errorOutput);
         this.downloads.set(id, download);
 
         if (this.mainWindow) {
@@ -270,10 +333,15 @@ class DownloadManager {
       }
 
       // Capturar título da música de forma mais específica
-      if (line.includes('[download] Destination:') || line.includes('Destination:')) {
+      if (
+        line.includes('[download] Destination:') ||
+        line.includes('Destination:') ||
+        line.includes('[ExtractAudio] Destination:')
+      ) {
         const destinationMatch = line.match(/Destination:\s*(.+)/);
-        if (destinationMatch && isPlaylist) {
+        if (destinationMatch) {
           const fullPath = destinationMatch[1].trim();
+          download.outputFile = fullPath;
           // Extrair apenas o nome do arquivo sem extensão
           const fileName =
             fullPath
@@ -283,8 +351,9 @@ class DownloadManager {
           const current = (download as any).playlistCurrent || 1;
           const total = (download as any).playlistTotal || 1;
 
-          if (fileName && total > 1 && !fileName.includes('format(s)')) {
-            download.title = `${fileName} (${current}/${total})`;
+          if (fileName && !fileName.includes('format(s)')) {
+            download.title =
+              isPlaylist && total > 1 ? `${fileName} (${current}/${total})` : fileName;
           }
         }
       }
@@ -415,7 +484,7 @@ class DownloadManager {
         ) {
           download.progress = 100;
           download.status = 'completed';
-          download.title = download.title.replace(/\s*\(\d+\/\d+\)/, '') + ' (Completo)';
+          download.title = `${download.title.replace(/\s*\(\d+\/\d+\)/, '')} (Completo)`;
           this.downloads.set(id, download);
 
           if (this.mainWindow) {
@@ -431,14 +500,39 @@ class DownloadManager {
   }
 
   private getFormatString(quality: string, format: string): string {
+    const audioFormats = new Set(['mp3', 'm4a', 'wav']);
+
+    if (audioFormats.has(format)) {
+      return quality === 'worst' ? 'worstaudio/worst' : 'bestaudio/best';
+    }
+
     switch (quality) {
       case 'best':
-        return format === 'mp3' ? 'bestaudio/best' : 'best';
+        return 'bestvideo+bestaudio/best';
       case 'worst':
-        return format === 'mp3' ? 'worstaudio/worst' : 'worst';
+        return 'worst';
       default:
-        return `best[height<=${quality}]`;
+        return `bestvideo[height<=${quality}]+bestaudio/best[height<=${quality}]/best[height<=${quality}]`;
     }
+  }
+
+  private formatProcessError(code: number | null, errorOutput: string): string {
+    const cleanedError = errorOutput
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .slice(-4)
+      .join(' ');
+
+    if (cleanedError) {
+      if (cleanedError.includes('Failed to decrypt with DPAPI')) {
+        return `${cleanedError} Use Login YouTube > Arquivo cookies.txt ou tente Firefox/Edge; o Chrome bloqueou a leitura direta dos cookies.`;
+      }
+
+      return cleanedError;
+    }
+
+    return `Download falhou com codigo ${code ?? 'desconhecido'}`;
   }
 
   cancelDownload(id: string): boolean {
@@ -465,7 +559,7 @@ class DownloadManager {
     this.cancelDownload(id);
     return this.downloads.delete(id);
   }
-  async getVideoInfo(url: string): Promise<VideoInfo> {
+  async getVideoInfo(url: string, options: DownloadOptions = {}): Promise<VideoInfo> {
     if (!this.ytDlpPath) {
       throw new Error('yt-dlp não encontrado');
     }
@@ -490,6 +584,14 @@ class DownloadManager {
       } else {
         // Para vídeos individuais, usar método normal
         args = [url, '--dump-json', '--no-warnings', '--skip-download'];
+      }
+
+      if (options.cookiesBrowser && options.cookiesBrowser !== 'none') {
+        if (options.cookiesBrowser === 'file' && options.cookiesFile) {
+          args.push('--cookies', options.cookiesFile);
+        } else {
+          args.push('--cookies-from-browser', options.cookiesBrowser);
+        }
       }
 
       const process = spawn(this.ytDlpPath as string, args, {

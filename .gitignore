@@ -10,6 +10,11 @@ dist/
 *.tgz
 *.tar.gz
 
+# Downloaded build binaries
+binaries/ffmpeg.exe
+binaries/ffmpeg.zip
+binaries/ffmpeg-extract/
+
 # Runtime data  
 pids
 *.pid

@@ -8,6 +8,8 @@ interface Settings {
   downloadPath: string;
   quality: string;
   format: string;
+  cookiesBrowser?: string;
+  cookiesFile?: string;
   isFirstRun?: boolean;
 }
 
@@ -34,6 +36,19 @@ function setupIPCHandlers(mainWindow: BrowserWindow, downloadManager: DownloadMa
     const result = await dialog.showOpenDialog(mainWindow, {
       title,
       properties: ['openDirectory'],
+    });
+
+    return result.canceled ? null : result.filePaths[0];
+  });
+
+  ipcMain.handle('select-cookies-file', async () => {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: 'Selecionar arquivo cookies.txt',
+      properties: ['openFile'],
+      filters: [
+        { name: 'Cookies do Netscape', extensions: ['txt'] },
+        { name: 'Todos os arquivos', extensions: ['*'] },
+      ],
     });
 
     return result.canceled ? null : result.filePaths[0];
@@ -121,6 +136,8 @@ function setupIPCHandlers(mainWindow: BrowserWindow, downloadManager: DownloadMa
         downloadPath: app.getPath('downloads'),
         quality: 'best',
         format: 'mp3',
+        cookiesBrowser: 'none',
+        cookiesFile: '',
       };
     } catch {
       return null;
@@ -135,6 +152,8 @@ function setupIPCHandlers(mainWindow: BrowserWindow, downloadManager: DownloadMa
         downloadPath: app.getPath('downloads'),
         quality: 'best',
         format: 'mp3',
+        cookiesBrowser: 'none',
+        cookiesFile: '',
         isFirstRun: false,
       };
 
@@ -193,6 +212,8 @@ function setupIPCHandlers(mainWindow: BrowserWindow, downloadManager: DownloadMa
         downloadPath: app.getPath('downloads'),
         quality: 'best',
         format: 'mp3',
+        cookiesBrowser: 'none',
+        cookiesFile: '',
       };
     }
   });
@@ -298,8 +319,8 @@ function setupIPCHandlers(mainWindow: BrowserWindow, downloadManager: DownloadMa
     return downloadManager.removeDownload(id);
   });
 
-  ipcMain.handle('get-video-info', async (_event, url: string): Promise<any> => {
-    return downloadManager.getVideoInfo(url);
+  ipcMain.handle('get-video-info', async (_event, url: string, options: any): Promise<any> => {
+    return downloadManager.getVideoInfo(url, options);
   });
 
   ipcMain.handle('get-playlist-count', async (_event, url: string): Promise<number> => {

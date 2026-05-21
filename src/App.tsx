@@ -1,14 +1,8 @@
-import { Download, Trash2 } from "lucide-react";
-import type React from "react";
-import { useEffect, useState } from "react";
-import {
-  DownloadQueue,
-  FirstRunDialog,
-  Header,
-  StatusBar,
-  UrlInput,
-} from "./components";
-import { Button } from "./components/ui/button";
+import { Download, Trash2 } from 'lucide-react';
+import type React from 'react';
+import { useEffect, useState } from 'react';
+import { DownloadQueue, FirstRunDialog, Header, StatusBar, UrlInput } from './components';
+import { Button } from './components/ui/button';
 
 // Types
 interface IDownload {
@@ -17,7 +11,7 @@ interface IDownload {
   title: string;
   uploader?: string;
   duration?: string;
-  status: "pending" | "downloading" | "completed" | "error";
+  status: 'pending' | 'downloading' | 'completed' | 'error';
   progress: number;
   error?: string;
   speed?: string;
@@ -36,6 +30,9 @@ interface QueueItem {
 
 interface AppSettings {
   quality: string;
+  format: string;
+  cookiesBrowser: string;
+  cookiesFile: string;
   outputFolder: string;
 }
 
@@ -45,30 +42,34 @@ declare global {
     electronAPI: {
       // File system
       selectFolder: (title: string) => Promise<string | null>;
+      selectCookiesFile: () => Promise<string | null>;
       getAppDataPath: () => Promise<string>;
       getDownloadsPath: () => Promise<string>;
       showInFolder: (filePath: string) => Promise<void>;
       openExternal: (url: string) => Promise<void>; // Settings
       getSettings: () => Promise<AppSettings | null>;
-      saveSettings: (
-        settings: any
-      ) => Promise<{ success: boolean; error?: string }>;
+      saveSettings: (settings: any) => Promise<{ success: boolean; error?: string }>;
       loadSettings: () => Promise<AppSettings | null>; // Downloads
       addDownload: (
         url: string,
         options: {
           quality: string;
           format: string;
+          cookiesBrowser?: string;
+          cookiesFile?: string;
           outputPath: string;
           title?: string;
           uploader?: string;
           duration?: string;
-        }
+        },
       ) => Promise<string>;
       cancelDownload: (id: string) => Promise<boolean>;
       getDownloads: () => Promise<IDownload[]>;
       removeDownload: (id: string) => Promise<boolean>;
-      getVideoInfo: (url: string) => Promise<{
+      getVideoInfo: (
+        url: string,
+        options?: { cookiesBrowser?: string; cookiesFile?: string },
+      ) => Promise<{
         title: string;
         uploader?: string;
         duration?: string;
@@ -90,14 +91,17 @@ const App: React.FC = () => {
   const [isDownloading, setIsDownloading] = useState<boolean>(false); // Estado de download ativo
   const [showFirstRunDialog, setShowFirstRunDialog] = useState<boolean>(false);
   const [settings, setSettings] = useState<AppSettings>({
-    quality: "best",
-    outputFolder: "",
+    quality: 'best',
+    format: 'mp3',
+    cookiesBrowser: 'none',
+    cookiesFile: '',
+    outputFolder: '',
   });
 
   const dependencies = {
     checked: true,
     available: true,
-    message: "Pronto para usar",
+    message: 'Pronto para usar',
   };
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: setupEventListeners doesn't need dependencies
@@ -119,9 +123,11 @@ const App: React.FC = () => {
         }
 
         setSettings({
-          quality: savedSettings.quality || "best",
-          outputFolder:
-            savedSettings.downloadPath || savedSettings.outputFolder || "",
+          quality: savedSettings.quality || 'best',
+          format: savedSettings.format || 'mp3',
+          cookiesBrowser: savedSettings.cookiesBrowser || 'none',
+          cookiesFile: savedSettings.cookiesFile || '',
+          outputFolder: savedSettings.downloadPath || savedSettings.outputFolder || '',
         });
       } else {
         // Set default output path
@@ -129,7 +135,7 @@ const App: React.FC = () => {
         setSettings((prev) => ({ ...prev, outputFolder: defaultPath }));
       }
     } catch (error) {
-      console.error("Error loading settings:", error);
+      console.error('Error loading settings:', error);
     }
   };
 
@@ -138,31 +144,21 @@ const App: React.FC = () => {
       const existingDownloads = await window.electronAPI.getDownloads();
       setDownloads(existingDownloads);
     } catch (error) {
-      console.error("Error loading downloads:", error);
+      console.error('Error loading downloads:', error);
     }
   };
 
   const setupEventListeners = (): (() => void) => {
-    const unsubscribeProgress = window.electronAPI.onDownloadProgress(
-      (data) => {
-        setDownloads((prev) =>
-          prev.map((d) => (d.id === data.id ? { ...d, ...data } : d))
-        );
-      }
-    );
+    const unsubscribeProgress = window.electronAPI.onDownloadProgress((data) => {
+      setDownloads((prev) => prev.map((d) => (d.id === data.id ? { ...d, ...data } : d)));
+    });
 
-    const unsubscribeComplete = window.electronAPI.onDownloadComplete(
-      (data) => {
-        setDownloads((prev) =>
-          prev.map((d) => (d.id === data.id ? { ...d, ...data } : d))
-        );
-      }
-    );
+    const unsubscribeComplete = window.electronAPI.onDownloadComplete((data) => {
+      setDownloads((prev) => prev.map((d) => (d.id === data.id ? { ...d, ...data } : d)));
+    });
 
     const unsubscribeError = window.electronAPI.onDownloadError((data) => {
-      setDownloads((prev) =>
-        prev.map((d) => (d.id === data.id ? { ...d, ...data } : d))
-      );
+      setDownloads((prev) => prev.map((d) => (d.id === data.id ? { ...d, ...data } : d)));
     });
 
     // Return cleanup function
@@ -177,22 +173,19 @@ const App: React.FC = () => {
     try {
       // Validar URL
       if (!url.trim()) {
-        throw new Error("URL não pode estar vazia");
+        throw new Error('URL não pode estar vazia');
       }
 
       // Verificar se já está na fila
       if (downloadQueue.some((item) => item.url === url)) {
-        throw new Error("URL já está na fila de downloads");
+        throw new Error('URL já está na fila de downloads');
       } // Detectar se é uma playlist
-      const isPlaylist =
-        url.includes("playlist?list=") || url.includes("&list=");
+      const isPlaylist = url.includes('playlist?list=') || url.includes('&list=');
 
       // Criar item da fila inicialmente só com URL
       const queueItem: QueueItem = {
         url,
-        title: isPlaylist
-          ? "Carregando informações da playlist..."
-          : "Carregando informações...",
+        title: isPlaylist ? 'Carregando informações da playlist...' : 'Carregando informações...',
         isLoading: true,
       };
 
@@ -201,7 +194,10 @@ const App: React.FC = () => {
 
       // Buscar informações do vídeo/playlist em background
       try {
-        const videoInfo = await window.electronAPI.getVideoInfo(url);
+        const videoInfo = await window.electronAPI.getVideoInfo(url, {
+          cookiesBrowser: settings.cookiesBrowser,
+          cookiesFile: settings.cookiesFile,
+        });
 
         // Atualizar com as informações do vídeo/playlist
         setDownloadQueue((prev) =>
@@ -210,15 +206,14 @@ const App: React.FC = () => {
               ? {
                   ...item,
                   title:
-                    videoInfo.title ||
-                    (isPlaylist ? "Playlist do YouTube" : "Vídeo do YouTube"),
+                    videoInfo.title || (isPlaylist ? 'Playlist do YouTube' : 'Vídeo do YouTube'),
                   uploader: videoInfo.uploader,
                   duration: videoInfo.duration,
                   thumbnail: videoInfo.thumbnail,
                   isLoading: false,
                 }
-              : item
-          )
+              : item,
+          ),
         );
       } catch {
         // Se falhar em buscar info, manter apenas com URL
@@ -227,28 +222,26 @@ const App: React.FC = () => {
             item.url === url
               ? {
                   ...item,
-                  title: isPlaylist
-                    ? "Playlist do YouTube"
-                    : "Vídeo do YouTube",
+                  title: isPlaylist ? 'Playlist do YouTube' : 'Vídeo do YouTube',
                   isLoading: false,
                 }
-              : item
-          )
+              : item,
+          ),
         );
       }
 
-      console.log("URL adicionada à fila:", url);
+      console.log('URL adicionada à fila:', url);
     } catch (error: any) {
-      console.error("Error adding to queue:", error);
+      console.error('Error adding to queue:', error);
 
       // Add error download to UI
       const errorDownload: IDownload = {
         id: Date.now().toString(),
         url,
-        title: "Erro ao adicionar à fila",
-        status: "error",
+        title: 'Erro ao adicionar à fila',
+        status: 'error',
         progress: 0,
-        error: error.message || "Erro desconhecido",
+        error: error.message || 'Erro desconhecido',
       };
 
       setDownloads((prev) => [...prev, errorDownload]);
@@ -257,65 +250,54 @@ const App: React.FC = () => {
 
   const startAllDownloads = async (): Promise<void> => {
     if (downloadQueue.length === 0) {
-      console.log("Nenhuma URL na fila para baixar");
+      console.log('Nenhuma URL na fila para baixar');
       return;
     }
 
     setIsDownloading(true);
 
     try {
-      const outputPath =
-        settings.outputFolder || (await window.electronAPI.getDownloadsPath());
+      const outputPath = settings.outputFolder || (await window.electronAPI.getDownloadsPath());
 
       // Baixar todas as URLs da fila
       for (const queueItem of downloadQueue) {
         try {
-          const downloadId = await window.electronAPI.addDownload(
-            queueItem.url,
-            {
-              quality: settings.quality || "best",
-              format: "mp3",
-              outputPath: outputPath,
-              title: queueItem.title,
-              uploader: queueItem.uploader,
-              duration: queueItem.duration,
-            }
-          );
+          const downloadId = await window.electronAPI.addDownload(queueItem.url, {
+            quality: settings.quality || 'best',
+            format: settings.format || 'mp3',
+            cookiesBrowser: settings.cookiesBrowser || 'none',
+            cookiesFile: settings.cookiesFile || '',
+            outputPath: outputPath,
+            title: queueItem.title,
+            uploader: queueItem.uploader,
+            duration: queueItem.duration,
+          });
 
           // Adicionar download à lista imediatamente
           const newDownload: IDownload = {
             id: downloadId,
             url: queueItem.url,
-            title: queueItem.title || "Preparando download...",
+            title: queueItem.title || 'Preparando download...',
             uploader: queueItem.uploader,
             duration: queueItem.duration,
-            status: "pending",
+            status: 'pending',
             progress: 0,
           };
 
           setDownloads((prev) => [...prev, newDownload]);
 
-          console.log(
-            "Download started with ID:",
-            downloadId,
-            "for URL:",
-            queueItem.url
-          );
+          console.log('Download started with ID:', downloadId, 'for URL:', queueItem.url);
         } catch (error: any) {
-          console.error(
-            "Error starting download for URL:",
-            queueItem.url,
-            error
-          );
+          console.error('Error starting download for URL:', queueItem.url, error);
 
           // Add error download to UI
           const errorDownload: IDownload = {
             id: Date.now().toString(),
             url: queueItem.url,
-            title: "Erro ao iniciar download",
-            status: "error",
+            title: 'Erro ao iniciar download',
+            status: 'error',
             progress: 0,
-            error: error.message || "Erro desconhecido",
+            error: error.message || 'Erro desconhecido',
           };
 
           setDownloads((prev) => [...prev, errorDownload]);
@@ -325,16 +307,14 @@ const App: React.FC = () => {
       // Limpar a fila após iniciar todos os downloads
       setDownloadQueue([]);
     } catch (error: any) {
-      console.error("Error starting downloads:", error);
+      console.error('Error starting downloads:', error);
     } finally {
       setIsDownloading(false);
     }
   };
 
   const removeFromQueue = (url: string): void => {
-    setDownloadQueue((prev) =>
-      prev.filter((queueItem) => queueItem.url !== url)
-    );
+    setDownloadQueue((prev) => prev.filter((queueItem) => queueItem.url !== url));
   };
 
   const clearQueue = (): void => {
@@ -346,16 +326,14 @@ const App: React.FC = () => {
       await window.electronAPI.removeDownload(downloadId);
       setDownloads((prev) => prev.filter((d) => d.id !== downloadId));
     } catch (error) {
-      console.error("Error removing download:", error);
+      console.error('Error removing download:', error);
     }
   };
   const clearCompleted = (): void => {
     // Apenas remover downloads completos da lista local
-    setDownloads((prev) => prev.filter((d) => d.status !== "completed"));
+    setDownloads((prev) => prev.filter((d) => d.status !== 'completed'));
   };
-  const updateSettings = async (
-    newSettings: Partial<AppSettings>
-  ): Promise<void> => {
+  const updateSettings = async (newSettings: Partial<AppSettings>): Promise<void> => {
     const updatedSettings = { ...settings, ...newSettings };
     setSettings(updatedSettings);
 
@@ -364,22 +342,24 @@ const App: React.FC = () => {
       const settingsToSave = {
         quality: updatedSettings.quality,
         downloadPath: updatedSettings.outputFolder,
-        format: "mp3",
+        format: updatedSettings.format,
+        cookiesBrowser: updatedSettings.cookiesBrowser,
+        cookiesFile: updatedSettings.cookiesFile,
       };
       await window.electronAPI.saveSettings(settingsToSave);
     } catch (error) {
-      console.error("Error saving settings:", error);
+      console.error('Error saving settings:', error);
     }
   };
-  const handleFirstRunComplete = async (
-    downloadPath: string
-  ): Promise<void> => {
+  const handleFirstRunComplete = async (downloadPath: string): Promise<void> => {
     try {
       // Salvar a configuração escolhida
       const settingsToSave = {
         quality: settings.quality,
         downloadPath: downloadPath,
-        format: "mp3",
+        format: settings.format,
+        cookiesBrowser: settings.cookiesBrowser,
+        cookiesFile: settings.cookiesFile,
       };
 
       await window.electronAPI.saveSettings(settingsToSave);
@@ -390,9 +370,9 @@ const App: React.FC = () => {
       // Fechar diálogo
       setShowFirstRunDialog(false);
 
-      console.log("✅ Primeira execução configurada:", downloadPath);
+      console.log('✅ Primeira execução configurada:', downloadPath);
     } catch (error) {
-      console.error("Erro ao salvar configuração inicial:", error);
+      console.error('Erro ao salvar configuração inicial:', error);
     }
   };
 
@@ -400,20 +380,29 @@ const App: React.FC = () => {
     try {
       await window.electronAPI.showInFolder(settings.outputFolder);
     } catch (error) {
-      console.error("Error opening downloads folder:", error);
+      console.error('Error opening downloads folder:', error);
     }
   };
 
   const handleSelectFolder = async (): Promise<void> => {
     try {
-      const folderPath = await window.electronAPI.selectFolder(
-        "Selecionar pasta de downloads"
-      );
+      const folderPath = await window.electronAPI.selectFolder('Selecionar pasta de downloads');
       if (folderPath) {
         await updateSettings({ outputFolder: folderPath });
       }
     } catch (error) {
-      console.error("Error selecting folder:", error);
+      console.error('Error selecting folder:', error);
+    }
+  };
+
+  const handleSelectCookiesFile = async (): Promise<void> => {
+    try {
+      const cookiesFile = await window.electronAPI.selectCookiesFile();
+      if (cookiesFile) {
+        await updateSettings({ cookiesBrowser: 'file', cookiesFile });
+      }
+    } catch (error) {
+      console.error('Error selecting cookies file:', error);
     }
   };
 
@@ -424,23 +413,18 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Diálogo de Primeira Execução */}
-      <FirstRunDialog
-        open={showFirstRunDialog}
-        onComplete={handleFirstRunComplete}
-      />
+      <FirstRunDialog open={showFirstRunDialog} onComplete={handleFirstRunComplete} />
 
       <Header
         onOpenDownloads={handleOpenDownloads}
         onSelectFolder={handleSelectFolder}
+        onSelectCookiesFile={handleSelectCookiesFile}
         settings={settings}
         onSettingsChange={updateSettings}
       />
       <main className="flex-1 container mx-auto px-4 py-6 space-y-6">
         <div className="space-y-4">
-          <UrlInput
-            onAddDownload={addToQueue}
-            disabled={!dependencies.available}
-          />
+          <UrlInput onAddDownload={addToQueue} disabled={!dependencies.available} />
           {/* Fila de Downloads */}
           {downloadQueue.length > 0 && (
             <div className="bg-card rounded-lg border p-4">
@@ -455,24 +439,16 @@ const App: React.FC = () => {
                     className="gap-2"
                   >
                     <Download className="h-4 w-4" />
-                    {isDownloading
-                      ? "Baixando..."
-                      : hasLoadingItems()
-                      ? "Carregando..."
-                      : "Baixar"}
+                    {isDownloading ? 'Baixando...' : hasLoadingItems() ? 'Carregando...' : 'Baixar'}
                   </Button>
-                  <Button
-                    onClick={clearQueue}
-                    variant="destructive"
-                    className="gap-2"
-                  >
+                  <Button onClick={clearQueue} variant="destructive" className="gap-2">
                     <Trash2 className="h-4 w-4" />
                     Limpar Fila
                   </Button>
                 </div>
-              </div>{" "}
+              </div>{' '}
               <div className="space-y-2">
-                {" "}
+                {' '}
                 {downloadQueue.map((queueItem) => (
                   <div
                     key={queueItem.url}
@@ -523,9 +499,7 @@ const App: React.FC = () => {
       <StatusBar
         dependencies={dependencies}
         downloadsCount={downloads.length}
-        activeDownloads={
-          downloads.filter((d) => d.status === "downloading").length
-        }
+        activeDownloads={downloads.filter((d) => d.status === 'downloading').length}
       />
     </div>
   );

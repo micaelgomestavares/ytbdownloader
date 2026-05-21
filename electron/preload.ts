@@ -7,12 +7,16 @@ interface DownloadOptions {
   outputPath?: string;
   quality?: string;
   format?: string;
+  cookiesBrowser?: string;
+  cookiesFile?: string;
 }
 
 interface Settings {
   downloadPath: string;
   quality: string;
   format: string;
+  cookiesBrowser?: string;
+  cookiesFile?: string;
   isFirstRun?: boolean;
 }
 
@@ -25,9 +29,10 @@ interface ElectronAPI {
 
   // File system operations
   selectFolder: (title: string) => Promise<string | null>;
+  selectCookiesFile: () => Promise<string | null>;
   openFolder: (path: string) => Promise<{ success: boolean; error?: string }>;
   // Video info
-  getVideoInfo: (url: string) => Promise<any>;
+  getVideoInfo: (url: string, options?: DownloadOptions) => Promise<any>;
   getPlaylistCount: (url: string) => Promise<number>;
 
   // Settings
@@ -51,9 +56,9 @@ interface ElectronAPI {
   showInFolder: (path: string) => Promise<{ success: boolean; error?: string }>;
 
   // Download events
-  onDownloadProgress: (callback: (data: any) => void) => void;
-  onDownloadComplete: (callback: (data: any) => void) => void;
-  onDownloadError: (callback: (data: any) => void) => void;
+  onDownloadProgress: (callback: (data: any) => void) => () => void;
+  onDownloadComplete: (callback: (data: any) => void) => () => void;
+  onDownloadError: (callback: (data: any) => void) => () => void;
 
   // Remove listeners
   removeAllListeners: (channel: string) => void;
@@ -78,9 +83,11 @@ const electronAPI: ElectronAPI = {
 
   // File system operations
   selectFolder: (title: string) => ipcRenderer.invoke('select-folder', title),
+  selectCookiesFile: () => ipcRenderer.invoke('select-cookies-file'),
   openFolder: (path: string) => ipcRenderer.invoke('open-folder', path),
   // Video info
-  getVideoInfo: (url: string) => ipcRenderer.invoke('get-video-info', url),
+  getVideoInfo: (url: string, options?: DownloadOptions) =>
+    ipcRenderer.invoke('get-video-info', url, options),
   getPlaylistCount: (url: string) => ipcRenderer.invoke('get-playlist-count', url),
 
   // Settings
@@ -93,21 +100,27 @@ const electronAPI: ElectronAPI = {
   getDownloads: () => ipcRenderer.invoke('get-downloads'),
   addDownload: (url: string, options?: DownloadOptions) =>
     ipcRenderer.invoke('start-download', url, options),
-  removeDownload: (id: string) => ipcRenderer.invoke('cancel-download', id),
+  removeDownload: (id: string) => ipcRenderer.invoke('remove-download', id),
 
   // Folder operations
   getDownloadsPath: () => ipcRenderer.invoke('get-downloads-path'),
-  showInFolder: (path: string) => ipcRenderer.invoke('open-folder', path),
+  showInFolder: (path: string) => ipcRenderer.invoke('show-in-folder', path),
 
   // Download events
   onDownloadProgress: (callback: (data: any) => void) => {
-    ipcRenderer.on('download-progress', (_event, data) => callback(data));
+    const listener = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('download-progress', listener);
+    return () => ipcRenderer.removeListener('download-progress', listener);
   },
   onDownloadComplete: (callback: (data: any) => void) => {
-    ipcRenderer.on('download-complete', (_event, data) => callback(data));
+    const listener = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('download-complete', listener);
+    return () => ipcRenderer.removeListener('download-complete', listener);
   },
   onDownloadError: (callback: (data: any) => void) => {
-    ipcRenderer.on('download-error', (_event, data) => callback(data));
+    const listener = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('download-error', listener);
+    return () => ipcRenderer.removeListener('download-error', listener);
   },
 
   // Remove listeners
